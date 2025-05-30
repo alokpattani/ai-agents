@@ -1,2 +1,2 @@
-# ice-cream-agent
-Agent to help find ice cream places across the US and get information about them using Google Maps and [Alok's personal list of 300+ ice cream places he's visited](http://bit.ly/icecreamplaces)
+# Ice Cream Agent
+Ice cream agent that can find ice cream places across the US and relevant information about those places from Google Maps and [Alok's personal reviews and ratings](http://bit.ly/icecreamplaces). It can also generate images of ice cream or ice cream places.
