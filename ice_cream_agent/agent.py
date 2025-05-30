@@ -1,5 +1,5 @@
 from google.adk.agents import Agent
-from google.adk.tools import FunctionTool, ToolContext# , load_artifacts
+from google.adk.tools import FunctionTool, ToolContext
 
 import os
 from dotenv import load_dotenv
@@ -32,16 +32,15 @@ client = genai.Client(vertexai=GOOGLE_GENAI_USE_VERTEXAI,
 
 async def get_aloks_ice_cream_places_info(prompt: str, tool_context: 
     ToolContext) -> str:
-    """Returns info about Alok's ice cream places from CSV file containing
+    """Returns info about Alok's ice cream places from file containing
        favorite flavors, ratings, and other things about the ice cream places 
        that Alok has been to in the US
 
     Args:
-        prompt (str): The prompt related to getting info about Alok's ice cream
-          places
+        prompt (str): Prompt to get info about Alok's ice cream places
 
     Returns:
-        str: Gemini text response grounded in Alok's ice cream places info
+        str: Gemini response grounded in Alok's ice cream places info
     """
 
     aloks_ice_cream_places_generation_response = client.models.generate_content(
@@ -77,16 +76,13 @@ async def get_aloks_ice_cream_places_info(prompt: str, tool_context:
 
 async def get_google_maps_ice_cream_places_info(prompt: str,
     tool_context: ToolContext) -> str:
-    """Returns info about ice cream places using Gemini with grounding in Google
-    Maps
+    """Returns info about ice cream places using Gemini grounded in Google Maps
 
     Args:
-        prompt (str): The prompt for Gemini to help get information about ice
-          cream places using Google Maps
+        prompt (str): Gemini prompt to get ice cream places info using Maps
           
     Returns:
-        str: Gemini text response about ice cream places using grounding in
-          Google Maps
+        str: Gemini response about ice cream places using grounding in Maps
     """
 
     google_maps_tool = Tool(
@@ -123,12 +119,10 @@ async def generate_ice_cream_image(prompt: str, tool_context: ToolContext
        itself) based on the prompt.
 
     Args:
-        prompt (str): The prompt related to getting an image of an ice cream or
-          ice cream place
+        prompt (str): prompt for getting an image of ice cream or ice cream place
 
     Returns:
-        dict: dict with image generation status, detail, and filename (if image
-            generated)
+        dict: dict with image generation status, detail, and filename
     """
 
     response = client.models.generate_images(
@@ -192,8 +186,7 @@ ice_cream_agent = Agent(
     tools=[
         get_aloks_ice_cream_places_info,
         get_google_maps_ice_cream_places_info,
-        generate_ice_cream_image,
-        # load_artifacts
+        generate_ice_cream_image
         ]
 )
 
