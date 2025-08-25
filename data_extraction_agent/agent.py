@@ -81,32 +81,32 @@ async def save_structured_response_as_csv(
         tool_context: context object provided by ADK framework containing user content
 
     Returns:
-        A success message and the filename of the saved CSV.
+        A success message and the filename of the CSV saved as an artifact
     """
 
+    # Convert structured response to pandas df
     df = pd.DataFrame(json.loads(structured_response))
 
-    csv_data = df.to_csv(index=False)
+    # Convert df to CSV to bytes using UTF-8 encoding
+    csv_bytes = df.to_csv(index=False).encode('utf-8')
 
-    # Save the CSV content as an artifact
+    # Save CSV content as an artifact from bytes
     version = await tool_context.save_artifact(
         filename=f"{filename}.csv", 
-        artifact=types.Part.from_text(text=csv_data)
-        )
+        artifact=types.Part.from_bytes(data = csv_bytes, mime_type = "text/csv")
+    )
 
-    file_name_with_version = f"{filename}_{version}.csv"
+    # Save df off as local CSV since sometimes Artifacts pane doesn't show CSVs in adk web
+    # df.to_csv(f"{filename}_{version}.csv", index=False)
 
-    # Save CSV off locally since sometimes artifacts pane doesn't work in adk web
-    df.to_csv(file_name_with_version, index=False)
-
-    return f"Successfully saved structured data to artifact {file_name_with_version}."
+    return f"Saved data to artifact {filename}.csv with version {version}."
 
 
 async def generate_skating_data_from_pdf(tool_context: ToolContext):
     """Returns figure skating data with specified schema
 
     Args:
-        tool_context: The context object provided by the ADK framework containing user content.
+        tool_context: context object provided by ADK framework containing user content
 
     Returns:
         pd.DataFrame: pandas dataframe with extracted figure skating data
@@ -462,7 +462,7 @@ data_extraction_agent = Agent(
         You are a data extraction agent that extracts data provided in PDF form
         from different Olympic sports into CSV files with a specified schema.
         
-        When a PDF is uploaded, determine if the PDF fits 1 of the following sports:
+        When a PDF is uploaded, determine if it fits 1 of the following sports:
         1) figure skating - if so, use the generate_skating_data_from_pdf tool
         2) ski aerials - if so, use the generate_ski_aerials_data_from_pdf tool
 
@@ -471,8 +471,9 @@ data_extraction_agent = Agent(
         and don't use any of the tools.
 
         If 1 of the tools successfully extracts the relevant data, let the user 
-        know the name of the resulting CSV file (including version). If there's
-        an error in data extraction, let the user know what it was.
+        know the name of the resulting CSV file (including version) and that it
+        should be available in the 'Artifacts' pane. If there's an error in data 
+        extraction or CSV creation, let the user know what it was.
     """,
     output_key = "data_extraction_agent_output",
     tools=[
