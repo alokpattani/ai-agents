@@ -1,0 +1,5 @@
+google-adk>=1.15.0
+google-genai>=1.39.0
+pandas
+python-dotenv
+numpy
