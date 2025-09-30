@@ -139,58 +139,78 @@ async def get_table_schema_from_pdf(
     return response.text
 
 
-async def save_structured_response_as_csv(
+async def save_structured_response(
     structured_response: str,
-    filename: str,
-    tool_context: ToolContext
+    file_name: str,
+    tool_context: ToolContext,
+    file_type: str = "csv"
 ) -> str:
     """
-    Saves structured response (e.g. from Gemini w/ controlled generation) as CSV
-    as artifact in tool_context
+    Saves structured response (e.g. from Gemini w/ controlled generation)
+    as CSV or JSON artifact in tool_context
 
     Args:
         structured_response: response from Gemini in text 
-        filename: The name of the CSV file to save (without ".csv" in name)
+        file_name: name of file to save (without ".csv" or ".json" in name)
         tool_context: context object provided by ADK framework containing user
           content
 
     Returns:
-        A success message and the filename of the CSV saved as an artifact
+        A success message with the name & version of the CSV/JSON file saved as
+          an artifact
     """
 
+    parsed_json = json.loads(structured_response)
+
     # Convert structured response to pandas df
-    df = pd.DataFrame(json.loads(structured_response))
+    df = pd.DataFrame(parsed_json)
 
-    # Convert df to CSV to bytes using UTF-8 encoding
-    csv_bytes = df.to_csv(index=False).encode('utf-8')
+    file_name_with_ext = f"{file_name}.{file_type}"
 
-    # Save CSV content as an artifact from bytes
+   # Use the file_type parameter to determine the output format
+    if file_type.lower() == "csv":
+        output_bytes = df.to_csv(index=False).encode('utf-8')
+        mime_type = "text/csv"
+        extension = "csv"
+    elif file_type.lower() == "json":
+        output_bytes = df.to_json(orient="records", indent=2).encode('utf-8')
+        mime_type = "application/json"
+        extension = "json"
+    else:
+        raise ValueError(f"Unsupported file type: '{file_type}'. "
+            "Please use 'csv' or 'json'.")
+
+    # Save the content as an artifact
     version = await tool_context.save_artifact(
-        filename=f"{filename}.csv", 
-        artifact=types.Part.from_bytes(data = csv_bytes, mime_type = "text/csv")
+        filename=f"{file_name_with_ext}", 
+        artifact=types.Part.from_bytes(data=output_bytes, mime_type=mime_type)
     )
 
-    return f"Saved data to artifact {filename}.csv with version {version}."
+    return f"Saved data to artifact {file_name_with_ext} w/ version {version}."
 
 
 async def generate_data_from_pdf_and_schema(
-    filename: str,
+    pdf_file_name: str,
     schema: str, 
-    tool_context: ToolContext
+    tool_context: ToolContext,
+    output_file_name: str = "extracted_data",
+    output_file_type: str = "csv"    
     ):
     """Extracts data from PDF with specified schema
 
     Args:
+        pdf_file_name: name of PDF file to read in   
         schema: JSON schema for use in PDF data extraction
         tool_context: context object provided by ADK framework containing user
           content
 
     Returns:
-        pd.DataFrame: pandas dataframe with extracted data
+        A success message with the name & version of the CSV/JSON file saved as
+          an artifact
     """
 
     try:
-        pdf_data = await get_pdf_from_artifact(filename, tool_context)
+        pdf_data = await get_pdf_from_artifact(pdf_file_name, tool_context)
     except ValueError as e:
         return str(e)
 
@@ -232,13 +252,14 @@ async def generate_data_from_pdf_and_schema(
 
     response_text = response.text.replace('\n', ' ')   
 
-    save_csv_result = await save_structured_response_as_csv(
+    file_save_result = await save_structured_response(
         structured_response=response_text,
-        filename="extracted_data",
-        tool_context=tool_context
+        file_name=output_file_name,
+        tool_context=tool_context,
+        file_type=output_file_type
         )
 
-    return save_csv_result
+    return file_save_result
 
 
 pdf_data_extraction_agent = Agent(
@@ -249,28 +270,33 @@ pdf_data_extraction_agent = Agent(
         """,
     instruction="""
         You are a data extraction agent that extracts data provided in PDF form
-        into a CSV file with an appopriate schema.
+        into a structured form with an appropriate schema, then outputs that
+        structured data as CSV or JSON.
         
         When a PDF is uploaded, generate the appropriate JSON schema for the 
         data in the PDF using the get_table_schema_from_pdf tool, taking into
         account any special instructions provided by the user. Display that
         generated schema to the user and allow them to verify that it makes 
-        sense. If the user suggest changes, pass those instructions along as
-        context to the get_table_schema_from_pdf tool for further calls as
+        sense. Also ask the user if they prefer CSV or JSON output.
+        
+        If the user suggest changes to the schema, pass those instructions alon
+        as context to the get_table_schema_from_pdf tool for further calls as
         necessary, checking in with the user after each change.
 
         If there is no structured data at all in the PDF contents, return a
         message to the user noting that, and potentially ask them to upload
         another PDF that has more structured data.
 
-        Once the schema has been agreed upon, call the 
+        Once the schema and output file type has been agreed upon, use the
         generate_data_from_pdf_and_schema tool with that schema and the original
-        PDF to extract the data into the desired form and export to CSV.
+        PDF to extract the data into the desired form and export to CSV or JSON
+        (as specified by the user). Name the output file using the original
+        input file name as much as possible.
 
         Once the relevant data has been extracted, let the user know the name of
-        the resulting CSV file (including version) and that it should be
+        the resulting file (including version) and that it should be
         available in the 'Artifacts' pane in adk web. If there's an error in
-        data extraction or CSV creation, let the user know what it was.
+        data extraction or CSV/JSON creation, let the user know what it was.
     """,
     output_key = "data_extraction_agent_output",
     tools=[
