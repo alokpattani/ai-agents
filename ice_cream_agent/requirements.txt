@@ -1,2 +1,2 @@
-google-adk>=1.0.0
-google-genai>=1.16.1
+google-adk>=1.15.1
+google-genai>=1.39.1
